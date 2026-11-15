@@ -1,0 +1,216 @@
+name: Docker image
+
+on:
+  push:
+    # ACT: 本仓库默认分支是 master（非 main），latest 与 sha-<短 SHA> 只在默认分支产出。
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: docker-${{ github.ref }}
+  # ACT: 只取消 PR 的旧任务；默认分支与版本标签的推送必须跑完，避免半推的镜像。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_NAME: ghcr.io/dolfly/toonflow
+
+jobs:
+  meta:
+    name: 计算镜像标签
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      push: ${{ steps.publish.outputs.push }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: 生成标签与 OCI 标签
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')) }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+            type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{major}},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=toonflow
+            org.opencontainers.image.description=Toonflow AI 短剧漫剧创作平台
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
+      - name: 判定是否推送镜像
+        id: publish
+        env:
+          eventName: ${{ github.event_name }}
+          ref: ${{ github.ref }}
+          tags: ${{ steps.meta.outputs.tags }}
+        run: |
+          # ACT: PR 与手动触发只构建不推送，避免污染 ghcr 包。
+          push=false
+          if [[ "$eventName" == "push" && ( "$ref" == "refs/heads/master" || "$ref" == refs/tags/v* ) && -n "$tags" ]]; then
+            push=true
+          fi
+          if [[ "$push" == "true" ]]; then
+            printf '推送标签：\n%s\n' "$tags"
+          else
+            printf '仅构建，不推送镜像。\n'
+          fi
+          printf 'push=%s\n' "$push" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: 构建 ${{ matrix.platform }}
+    needs: meta
+    # ACT: 使用与目标架构一致的原生 runner，避免 QEMU 模拟下包安装与构建过慢；Runner 不可用时改为 setup-qemu-action + 单一 linux/amd64,linux/arm64 构建。
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+            scope: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            scope: arm64
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@v3
+      - name: 登录 GHCR
+        if: needs.meta.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 构建 ${{ matrix.platform }} 镜像
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          labels: ${{ needs.meta.outputs.labels }}
+          push: ${{ needs.meta.outputs.push }}
+          # ACT: 推送时按 digest 上游，待 manifest 合并后再打标签；provenance 关闭以免 manifest 列表混入 attestation。
+          outputs: ${{ needs.meta.outputs.push == 'true' && format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE_NAME) || '' }}
+          provenance: false
+          cache-from: type=gha,scope=docker-${{ matrix.scope }}
+          cache-to: type=gha,mode=max,scope=docker-${{ matrix.scope }}
+      - name: 记录架构 digest
+        if: needs.meta.outputs.push == 'true'
+        env:
+          digest: ${{ steps.build.outputs.digest }}
+          scope: ${{ matrix.scope }}
+        run: |
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::构建未返回有效 digest（$digest）。"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/digests"
+          printf '%s' "$digest" > "$RUNNER_TEMP/digests/$scope"
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
+      - name: 上传架构 digest
+        if: needs.meta.outputs.push == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.scope }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  manifest:
+    name: 合并多架构 manifest
+    needs: [meta, build]
+    if: needs.meta.outputs.push == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: 下载架构 digest
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v3
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 合并并推送 manifest 列表
+        env:
+          imageName: ${{ env.IMAGE_NAME }}
+          tags: ${{ needs.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          args=()
+          while IFS= read -r tag; do
+            [[ -n "$tag" ]] && args+=(-t "$tag")
+          done <<< "$tags"
+          if [[ ${#args[@]} -eq 0 ]]; then
+            echo '::error::没有可用的镜像标签。'
+            exit 1
+          fi
+          digests=()
+          for file in "$RUNNER_TEMP"/digests/*; do
+            value="$(tr -d '[:space:]' < "$file")"
+            if [[ ! "$value" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "::error::无效的 digest 文件：$file"
+              exit 1
+            fi
+            digests+=("$imageName@$value")
+          done
+          if [[ ${#digests[@]} -ne 2 ]]; then
+            echo "::error::期望 2 个架构 digest，实际 ${#digests[@]}。"
+            exit 1
+          fi
+          docker buildx imagetools create "${args[@]}" "${digests[@]}"
+
+  verify:
+    name: 校验镜像架构
+    needs: [meta, manifest]
+    if: needs.meta.outputs.push == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 确认 amd64 与 arm64 均已发布
+        env:
+          imageName: ${{ env.IMAGE_NAME }}
+          tags: ${{ needs.meta.outputs.tags }}
+        run: |
+          set -euo pipefail
+          tag="$(head -n 1 <<< "$tags")"
+          printf '校验镜像：%s\n' "$tag"
+          listing="$(docker manifest inspect "$tag")"
+          printf '%s\n' "$listing"
+          for platform in linux/amd64 linux/arm64; do
+            if ! grep -q "\"architecture\": \"${platform#linux/}\"" <<< "$listing"; then
+              echo "::error::镜像缺少 ${platform} 平台。"
+              exit 1
+            fi
+          done
+          if grep -q '"architecture": "unknown"' <<< "$listing"; then
+            echo '::warning::manifest 中存在未知架构条目，请检查 attestation 或构建输出配置。'
+          fi
+          printf '%s\n' "$listing" >> "$GITHUB_STEP_SUMMARY"
