@@ -30,7 +30,18 @@ bun run preview  # 预览构建产物
 
 ## 发布
 
-`.github/workflows/docs.yml` 在推送到 `master` 且改动涉及 `docs-site/**` 或 `docs/**` 时构建并部署，也可在 Actions 中手动运行。仓库需在 **Settings → Pages → Source** 选择 **GitHub Actions**。
+`.github/workflows/docs.yml` 在推送到 `master` 且改动涉及 `docs-site/**` 或 `docs/**` 时构建，也可在 Actions 中手动运行。构建产物只推送到 **`gh-pages` 分支**（每次 force push 成单提交历史，带 `.nojekyll`），`master` 上不保存任何构建结果，只保留文档源码。
+
+仓库需在 **Settings → Pages → Source** 选择 **Deploy from a branch**，分支 `gh-pages`、目录 `/`。
+
+首次开启或切换来源：
+
+```sh
+gh api -X PUT repos/dolfly/toonflow/pages \
+  -F build_type=legacy \
+  -F source[branch]=gh-pages \
+  -F source[path]=/
+```
 
 站点地址：<https://dolfly.github.io/toonflow/>
 

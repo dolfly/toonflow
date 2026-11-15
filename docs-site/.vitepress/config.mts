@@ -18,6 +18,8 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/png', href: `${base}logo.png` }],
     ['meta', { name: 'theme-color', content: '#0f172a' }],
   ],
+  // 本目录的 README.md 是仓库内的开发者说明，不进公开站点。
+  srcExclude: ['README.md'],
   appearance: true,
   lastUpdated: true,
   cleanUrls: false,

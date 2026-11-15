@@ -16,17 +16,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build docs site
+  deploy:
+    name: Build and publish docs to gh-pages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -49,22 +47,20 @@ jobs:
           DOCS_BASE: /${{ github.event.repository.name }}/
         run: bun run build
 
-      - name: Upload Pages artifact
+      # 构建产物只发布到 gh-pages 分支，master 上不保存任何构建结果。
+      # gh-pages 每次 force push 成单提交历史，避免产物历史膨胀。
+      - name: Publish to gh-pages
         if: github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs-site/.vitepress/dist
-          retention-days: 7
-
-  deploy:
-    name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+        working-directory: docs-site/.vitepress/dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "docs: 发布文档站 ${COMMIT_SHA:0:7}"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
