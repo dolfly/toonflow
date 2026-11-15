@@ -1,0 +1,14 @@
+{
+  "name": "@toonflow/docs-site",
+  "private": true,
+  "type": "module",
+  "description": "Toonflow 文档站（VitePress），构建后由 GitHub Pages 发布",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
