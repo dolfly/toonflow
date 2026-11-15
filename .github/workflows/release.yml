@@ -45,6 +45,12 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      # ACT: 签名与更新托管都是可选增强，缺证书/密钥时如实标注，不伪称已签名。
+      macSigned: ${{ secrets.MACOS_CERTIFICATE_BASE64 != '' && secrets.MACOS_CERTIFICATE_PASSWORD != '' && secrets.MACOS_NOTARIZATION_KEY_ID != '' && secrets.MACOS_NOTARIZATION_ISSUER_ID != '' && secrets.MACOS_NOTARIZATION_KEY_BASE64 != '' && '1' || '0' }}
+      TFROUTER_UPLOAD_KEY: ${{ secrets.TFROUTER_UPLOAD_KEY }}
+      TFROUTER_UPLOAD_PUT_URL: ${{ secrets.TFROUTER_UPLOAD_PUT_URL }}
+      TFROUTER_UPLOAD_GET_PUT_URL: ${{ secrets.TFROUTER_UPLOAD_GET_PUT_URL }}
     steps:
       - name: 校验已有版本标签
         env:
@@ -86,50 +92,63 @@ jobs:
 
           const files = readdirSync("artifacts");
           const version = process.env.releaseVersion;
-          const findInstaller = (label, matches) => {
-            const names = files.filter(matches);
-            if (names.length !== 1) throw new Error(`${label} 安装包数量应为 1，实际为 ${names.length}`);
-            return names[0];
-          };
-          const windows = findInstaller("Windows x64", name => name === `toonflow-${version}-Setup.exe`);
-          const windowsArm = findInstaller("Windows ARM64", name => name === `toonflow-${version}-win-arm64-Setup.exe`);
-          const macArm = findInstaller("macOS ARM64", name => name === `toonflow-${version}-macos-arm64.dmg`);
-          const macIntel = findInstaller("macOS x64", name => name === `toonflow-${version}-macos-x64.dmg`);
-          const linux = findInstaller("Linux x64", name => name === `toonflow-${version}-linux-x64.deb`);
-          const linuxArm = findInstaller("Linux ARM64", name => name === `toonflow-${version}-linux-arm64.deb`);
-          const android = findInstaller("Android ARM64", name => name === `toonflow-${version}-android-arm64.apk`);
+          const macSigned = process.env.macSigned === "1";
+          const updateChannelEnabled = Boolean(process.env.TFROUTER_UPLOAD_KEY?.trim()
+            && process.env.TFROUTER_UPLOAD_PUT_URL?.trim() && process.env.TFROUTER_UPLOAD_GET_PUT_URL?.trim());
+          // ACT: 各平台安装包按实际产物生成下载表；缺少某平台时如实列出，不伪造链接。
+          const platforms = [
+            { name: "Windows x64", label: "💻 Windows（Intel / AMD，x64）", file: `toonflow-${version}-Setup.exe` },
+            { name: "Windows ARM64", label: "💻 Windows（ARM64）", file: `toonflow-${version}-win-arm64-Setup.exe` },
+            { name: "macOS ARM64", label: "🍎 Mac（M 系列芯片）", file: `toonflow-${version}-macos-arm64.dmg` },
+            { name: "macOS x64", label: "🍎 Mac（Intel 芯片）", file: `toonflow-${version}-macos-x64.dmg` },
+            { name: "Linux x64", label: "🐧 Linux（Intel / AMD，x64）", file: `toonflow-${version}-linux-x64.deb` },
+            { name: "Linux ARM64", label: "🐧 Linux（ARM64）", file: `toonflow-${version}-linux-arm64.deb` },
+            { name: "Android ARM64", label: "📱 Android（ARM64，Android 8 及以上）", file: `toonflow-${version}-android-arm64.apk` },
+          ];
+          const available = platforms.filter(item => files.includes(item.file));
+          const missing = platforms.filter(item => !files.includes(item.file));
+          if (!available.length) throw new Error("构建产物中没有可发布的安装包");
           const baseUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/releases/download/v${version}`;
           const download = name => `${baseUrl}/${encodeURIComponent(name)}`;
-          writeFileSync("releaseBody.md", [
+          const lines = [
             "## 📦 下载指南",
             "",
-            "选择你的设备对应的安装包，点击即可下载：",
+            `本版本由 \`${process.env.GITHUB_REPOSITORY}\` 自行构建并发布（tag \`v${version}\`），不是上游官方构建。`,
             "",
             "| 你的设备 | 下载 |",
             "| --- | --- |",
-            `| 💻 Windows（Intel / AMD，x64） | [⬇️ 下载 Windows x64 安装包](${download(windows)}) |`,
-            `| 💻 Windows（ARM64） | [⬇️ 下载 Windows ARM64 安装包](${download(windowsArm)}) |`,
-            `| 🍎 Mac（M 系列芯片） | [⬇️ 下载 M 系列 Mac 安装包](${download(macArm)}) |`,
-            `| 🍎 Mac（Intel 芯片） | [⬇️ 下载 Intel Mac 安装包](${download(macIntel)}) |`,
-            `| 🐧 Linux（Intel / AMD，x64） | [⬇️ 下载 Linux x64 DEB](${download(linux)}) |`,
-            `| 🐧 Linux（ARM64） | [⬇️ 下载 Linux ARM64 DEB](${download(linuxArm)}) |`,
-            `| 📱 Android（ARM64，Android 8 及以上） | [⬇️ 下载 Android APK](${download(android)}) |`,
+            ...available.map(item => `| ${item.label} | [⬇️ 下载 ${item.name} 安装包](${download(item.file)}) |`),
             "",
             "> 💡 手动安装请选择上表中的链接。下方其他文件供软件自动更新使用。",
             "",
-            "## 🚀 安装说明",
-            "",
+          ];
+          if (missing.length) {
+            lines.push(`本次构建未产出以下平台的安装包：${missing.map(item => item.name).join("、")}。`, "");
+          }
+          lines.push("## 🔏 签名与公证状态", "");
+          if (macSigned) {
+            lines.push("- macOS：应用与 DMG 均使用 Developer ID Application 签名，并完成 Apple 公证。");
+          } else {
+            lines.push("- macOS：**未使用 Developer ID 签名，未做 Apple 公证**（本仓库未配置签名证书）。首次打开可能被 Gatekeeper 拦截：可在“系统设置 → 隐私与安全性”选择“仍要打开”，或执行 `sudo xattr -rd com.apple.quarantine /Applications/toonflow.app`。");
+          }
+          lines.push("- Windows：未配置代码签名证书，安装包未签名；文件版本信息不代表数字签名，也不代表已通过 Defender 检测。", "");
+          lines.push("## 🔄 增量更新", "");
+          lines.push(updateChannelEnabled
+            ? "- 已登记到更新托管网站，客户端可通过“设置 → 关于”走增量更新。"
+            : "- **增量更新通道未启用**（本仓库未配置更新托管上传密钥 `TFROUTER_UPLOAD_*`），请直接下载安装包覆盖安装。");
+          lines.push("", "## 🚀 安装说明", "");
+          lines.push(
             "- 💻 **Windows**：双击下载的安装包，按提示完成安装。ARM64 需要 .NET Framework 4.8.1，较新的 Windows 11 已内置。",
-            "- 🍎 **Mac（macOS 14 及以上）**：打开下载的 `.dmg` 镜像，将 `toonflow.app` 拖入“应用程序”，复制完成后再从“应用程序”打开。",
+            "- 🍎 **Mac（macOS 14 及以上）**：打开下载的 `.dmg` 镜像，将 `toonflow.app` 拖入“应用程序”，再从“应用程序”打开。",
             "- 🐧 **Linux（Debian / Ubuntu）**：选择对应架构的 DEB，在下载目录执行 `sudo apt install ./toonflow-版本号-linux-架构.deb`，安装后从应用菜单打开。",
             "- 📱 **Android**：在手机上打开 APK，按系统提示允许此来源安装应用。后续版本可直接覆盖安装。",
             "",
-            "两种 Mac 应用与 DMG 镜像均使用 Developer ID Application 签名，并完成 Apple 公证。首次打开时，macOS 仍可能提示确认打开从互联网下载的应用。",
             "旧版 Intel Mac 客户端首次迁移到统一 SDK 版本时，请下载完整 DMG 覆盖安装；旧版增量更新不能直接迁移。安装前请退出应用并备份原数据目录。",
             "",
             "---",
             "",
-          ].join("\n"));
+          );
+          writeFileSync("releaseBody.md", lines.join("\n"));
           JS
       - name: 发布安装包及更新文件
         uses: softprops/action-gh-release@v3
@@ -146,12 +165,14 @@ jobs:
         with:
           bun-version: 1.4.3
       - name: 上传到更新托管网站
+        # ACT: 未配置更新托管密钥时跳过登记，Release 说明会标注增量更新通道未启用。
+        if: env.TFROUTER_UPLOAD_KEY != '' && env.TFROUTER_UPLOAD_PUT_URL != '' && env.TFROUTER_UPLOAD_GET_PUT_URL != ''
         timeout-minutes: 60
         env:
           releaseVersion: ${{ needs.build.outputs.version }}
-          uploadKey: ${{ secrets.TFROUTER_UPLOAD_KEY }}
-          uploadPutUrl: ${{ secrets.TFROUTER_UPLOAD_PUT_URL }}
-          uploadGetPutUrl: ${{ secrets.TFROUTER_UPLOAD_GET_PUT_URL }}
+          uploadKey: ${{ env.TFROUTER_UPLOAD_KEY }}
+          uploadPutUrl: ${{ env.TFROUTER_UPLOAD_PUT_URL }}
+          uploadGetPutUrl: ${{ env.TFROUTER_UPLOAD_GET_PUT_URL }}
         run: |
           bun -e '
           import { readdirSync } from "node:fs";
