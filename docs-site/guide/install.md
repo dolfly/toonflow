@@ -2,25 +2,33 @@
 
 ## 客户端安装
 
-| 操作系统 | 安装包 |
-| --- | --- |
-| Windows x64 | [EXE 安装包](https://github.com/dolfly/toonflow/releases) |
-| Windows ARM64 | [EXE 安装包](https://github.com/dolfly/toonflow/releases) |
-| macOS Apple Silicon（ARM64，macOS 14 及以上） | [DMG 安装包](https://github.com/dolfly/toonflow/releases) |
-| macOS Intel（x64，macOS 14 及以上） | [DMG 安装包](https://github.com/dolfly/toonflow/releases) |
-| Linux x64（Debian / Ubuntu） | [DEB 安装包](https://github.com/dolfly/toonflow/releases) |
-| Linux ARM64（Debian / Ubuntu） | [DEB 安装包](https://github.com/dolfly/toonflow/releases) |
-| Android ARM64 | [APK 下载](https://github.com/dolfly/toonflow/releases/latest) |
+当前版本 **2.0.11**，由本仓库自行构建。下表链接直接指向发布文件，历史版本见 [Releases](https://github.com/dolfly/toonflow/releases)。
 
-Android 版仅支持 ARM64 设备，下载发布页中的 `toonflow-版本号-android-arm64.apk` 安装。手机内置本地 Bun 后端，可独立运行；也可从首页「设备互联」扫码或手动连接已开启共享的电脑或远程后端（支持局域网与公网）。
+| 操作系统 | 下载文件 |
+| --- | --- |
+| Windows x64 | [toonflow-2.0.11-Setup.exe](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-Setup.exe) |
+| Windows ARM64 | [toonflow-2.0.11-win-arm64-Setup.exe](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-win-arm64-Setup.exe) |
+| macOS Apple Silicon（ARM64，macOS 14 及以上） | [toonflow-2.0.11-macos-arm64.dmg](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-macos-arm64.dmg) |
+| macOS Intel（x64，macOS 14 及以上） | [toonflow-2.0.11-macos-x64.dmg](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-macos-x64.dmg) |
+| Linux x64（Debian / Ubuntu） | [toonflow-2.0.11-linux-x64.deb](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-linux-x64.deb) |
+| Linux ARM64（Debian / Ubuntu） | [toonflow-2.0.11-linux-arm64.deb](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-linux-arm64.deb) |
+| Android ARM64 | [toonflow-2.0.11-android-arm64.apk](https://github.com/dolfly/toonflow/releases/download/v2.0.11/toonflow-2.0.11-android-arm64.apk) |
+
+::: warning 签名与公证状态
+本仓库没有配置代码签名证书，**Windows 安装包未做数字签名，macOS 应用与 DMG 未使用 Developer ID 签名、未做 Apple 公证**。macOS 首次打开若被 Gatekeeper 拦截，按下方“macOS 无法安装或打开时的处理方法”操作即可。
+
+客户端增量更新通道也未启用（未配置更新托管上传密钥），请直接下载安装包覆盖安装。
+:::
+
+Android 版仅支持 ARM64 设备，下载上表中的 `toonflow-2.0.11-android-arm64.apk` 安装。手机内置本地 Bun 后端，可独立运行；也可从首页「设备互联」扫码或手动连接已开启共享的电脑或远程后端（支持局域网与公网）。
 
 Windows 安装器会自动检测并安装 WebView2；如果安装后打开闪退，请前往 [WebView2 下载页面](https://developer.microsoft.com/microsoft-edge/webview2/) 手动安装运行时。
 
-Windows 的 Intel / AMD 电脑选择 `toonflow-版本号-Setup.exe`，ARM64 电脑选择 `toonflow-版本号-win-arm64-Setup.exe`。ARM64 需要 .NET Framework 4.8.1，较新的 Windows 11 已内置。
+Windows 的 Intel / AMD 电脑选择 `toonflow-2.0.11-Setup.exe`，ARM64 电脑选择 `toonflow-2.0.11-win-arm64-Setup.exe`。ARM64 需要 .NET Framework 4.8.1，较新的 Windows 11 已内置。
 
-Linux 选择对应架构的 `toonflow-版本号-linux-x64.deb` 或 `toonflow-版本号-linux-arm64.deb`，在下载目录执行 `sudo apt install ./安装包文件名.deb`，安装后从应用菜单打开。安装需要联网；apt 会准备 FFmpeg、curl、unzip、CA 证书等依赖，安装脚本在解包应用前下载固定版本的 Bun 并校验大小与 SHA-256，配置阶段再安装运行时。下载或校验失败会在解包前中止安装。
+Linux 选择对应架构的 `toonflow-2.0.11-linux-x64.deb` 或 `toonflow-2.0.11-linux-arm64.deb`，在下载目录执行 `sudo apt install ./安装包文件名.deb`，安装后从应用菜单打开。安装需要联网；apt 会准备 FFmpeg、curl、unzip、CA 证书等依赖，安装脚本在解包应用前下载固定版本的 Bun 并校验大小与 SHA-256，配置阶段再安装运行时。下载或校验失败会在解包前中止安装。
 
-macOS 两种架构均使用统一的 Electrobun SDK，最低支持 macOS 14。选择对应架构的 `toonflow-版本号-macos-arm64.dmg` 或 `toonflow-版本号-macos-x64.dmg`，打开后将 `toonflow.app` 拖入“应用程序”，再从“应用程序”打开 Toonflow。正式发布流程使用 Developer ID Application 签署应用与 DMG，并完成 Apple 公证。旧版 Intel Mac 客户端首次迁移时须下载完整 DMG 覆盖安装，不能通过旧版增量更新直接迁移；安装前退出应用并备份原数据目录。
+macOS 两种架构均使用统一的 Electrobun SDK，最低支持 macOS 14。选择对应架构的 `toonflow-2.0.11-macos-arm64.dmg` 或 `toonflow-2.0.11-macos-x64.dmg`，打开后将 `toonflow.app` 拖入“应用程序”，再从“应用程序”打开 Toonflow。本仓库的构建未使用 Developer ID Application 签名，也未做 Apple 公证；需要签名版的用户可改用上游 [HBAI-Ltd/Toonflow-app](https://github.com/HBAI-Ltd/Toonflow-app/releases) 的正式版本。旧版 Intel Mac 客户端首次迁移时须下载完整 DMG 覆盖安装，不能通过旧版增量更新直接迁移；安装前退出应用并备份原数据目录。
 
 ### macOS 无法安装或打开时的处理方法
 
