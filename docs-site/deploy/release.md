@@ -99,11 +99,20 @@ SignTool 已在 PATH 时可省略 `windowsSignToolPath`；指定路径时必须�
 
 ## 文档站构建与发布
 
-文档站（本站）由 `.github/workflows/docs.yml` 构建并发布到 GitHub Pages：
+文档站（本站）由 `.github/workflows/docs.yml` 构建，产物发布到 **`gh-pages` 分支**，GitHub Pages 从该分支提供服务：
 
 - 触发条件：推送到 `master` 且改动涉及 `docs-site/**` 或 `docs/**`，或在 Actions 中手动运行。
-- 构建：Node 22 + `bun install` + `bun run build`（工作目录 `docs-site/`），`DOCS_BASE` 由仓库名注入，产物为 `docs-site/.vitepress/dist`。
-- 发布：通过 `actions/upload-pages-artifact` 与 `actions/deploy-pages` 部署，站点地址形如 `https://<owner>.github.io/toonflow/`。
-- 仓库设置：**Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**；首次开启也可执行 `gh api -X POST repos/<owner>/toonflow/pages -f build_type=workflow`。
+- 构建：Bun 1.4.3 + `bun install --frozen-lockfile` + `bun run build`（工作目录 `docs-site/`），`DOCS_BASE` 由仓库名注入，产物为 `docs-site/.vitepress/dist`。
+- 发布：把 `dist` 内容（含 `.nojekyll`）以单提交 force push 到 `gh-pages`，`master` 上不保存任何构建产物，只有文档源码；PR 只构建不发布。
+- 仓库设置：**Settings → Pages → Build and deployment → Source** 选择 **Deploy from a branch**，分支 `gh-pages`、目录 `/`。首次开启或从其他来源切换：
 
-回滚方式：`git revert` 对应提交后重新运行 workflow，或对该 workflow 重新运行上一次成功构建。
+  ```sh
+  gh api -X PUT repos/<owner>/toonflow/pages \
+    -F build_type=legacy \
+    -F source[branch]=gh-pages \
+    -F source[path]=/
+  ```
+
+- 站点地址形如 `https://<owner>.github.io/toonflow/`。
+
+回滚方式：`git revert` 对应提交后重新运行 workflow，会重新生成 `gh-pages`；或对该 workflow 重新运行上一次成功构建。`gh-pages` 每次强制覆盖，历史只有一条提交，不用于保存版本快照。
