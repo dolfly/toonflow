@@ -1,5 +1,8 @@
 name: Docker image
 
+# ACT: docker/* 统一取最新 major（metadata v6、setup-buildx v4、login v4、build-push v7）；
+# 这些版本以 Node 24 为运行时，要求 Actions Runner v2.327.1+，GitHub 托管 runner 已满足。
+
 on:
   push:
     # ACT: 本仓库默认分支是 master（非 main），latest 与 sha-<短 SHA> 只在默认分支产出。
@@ -35,7 +38,7 @@ jobs:
           persist-credentials: false
       - name: 生成标签与 OCI 标签
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
@@ -88,17 +91,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: 登录 GHCR
         if: needs.meta.outputs.push == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: 构建 ${{ matrix.platform }} 镜像
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -144,9 +147,9 @@ jobs:
           path: ${{ runner.temp }}/digests
           pattern: digest-*
           merge-multiple: true
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: 登录 GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -187,9 +190,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: 登录 GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
