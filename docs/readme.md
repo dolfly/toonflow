@@ -32,8 +32,9 @@
 
 ## 使用与开发
 
-- [在线文档站](https://dolfly.github.io/toonflow/)：使用教程、开发文档与部署运维的统一入口，源码见 [`docs-site/`](../docs-site/README.md)。
-- [使用教程](https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf)：日常操作与创作流程。
+- [在线文档站](https://dolfly.github.io/toonflow/)：使用教程、开发文档、插件开发与部署运维的统一入口，源码见 [`docs-site/`](../docs-site/README.md)。
+- [使用教程](https://qcn7xdsqgc4z.feishu.cn/docx/RXFqdgR2Xo0dXZxGfd0cZCGgnwf)：日常操作与创作流程（已同步进文档站「使用教程」分组）。
+- [插件开发指南](https://dolfly.github.io/toonflow/plugins/)：工具、节点、技能的开发契约、最小示例、构建与发布（已同步进文档站「插件开发」分组）。
 - [开发与扩展指南](./development.md)：源码运行、插件扩展、桌面打包和更新发布。
 - [Android 说明](../apps/mobile/readme.md)：ARM64 APK、本地运行、设备互联与构建。
 - [贡献指南](../CONTRIBUTING.md)与[开发规范](../AGENTS.md)：参与项目的约定。
@@ -52,6 +53,7 @@ docs/
     screenshots/     产品截图
     sponsors/        赞助商图片
     tutorial/        使用教程配图（文档站引用）
+    plugins/         插件开发指南配图（文档站引用）
 docs-site/           文档站源码（VitePress），构建产物发布到 GitHub Pages
 ```
 

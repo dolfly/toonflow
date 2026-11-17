@@ -19,6 +19,9 @@ hero:
       text: 开发文档
       link: /development/
     - theme: alt
+      text: 插件开发
+      link: /plugins/
+    - theme: alt
       text: 部署运维
       link: /deploy/
 

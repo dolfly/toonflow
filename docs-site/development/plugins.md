@@ -30,6 +30,16 @@ Windows 安装器负责注册协议；macOS 需要将应用放入 `/Applications
 
 安装后可在插件市场或助手中调用，用于创建骨架、本地构建、上传与刷新插件。
 
+## 从零开发一个插件
+
+本节讲的是**安装契约与协议**（安装格式、大小限制、`toonflow://install` 唤起、提供方适配）。如果你要从零写一个工具、节点或技能并发布，请看独立的「插件开发」分区：
+
+- [插件开发总览](/plugins/) —— 三类扩展怎么选、目录与构建环境、命名与版本、安装调试、运行边界。
+- [Tools 工具插件开发](/plugins/tools) —— `createToolConfig` 构建元数据、`ToolDefinition` 契约、宿主上下文、FFmpeg、可选消息界面。
+- [Nodes 节点插件开发](/plugins/nodes) —— `createNodeConfig`、`defineOptions` 端口、`useNode` 状态、文件与媒体持久化、节点操作。
+- [Skill 技能插件开发](/plugins/skill) —— `SKILL.md` 字段、最小示例、`skillOperator` 调试、打包安装。
+- [交付前检查](/plugins/checklist) 与 [发布插件](/plugins/publish)。
+
 ## 各扩展类型的入口
 
 | 扩展类型 | 脚手架 / 实现 | 说明 |

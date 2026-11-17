@@ -21,5 +21,4 @@
 ## 插件从哪来
 
 - 网页版市场：<https://api.toonflow.net/console/plugIn>
-- 开发者文档：[飞书文档](https://qcn7xdsqgc4z.feishu.cn/docx/KNBNd9naqolsy6xjAOCcEAkqnRd)
-- 自己写：见[插件、技能与提供方](/development/plugins)
+- 自己写：本站[插件开发](/plugins/) 分区，从「01 · 开发总览」到「07 · 发布插件」覆盖工具、节点、技能全流程；安装契约见[插件、技能与提供方](/development/plugins)

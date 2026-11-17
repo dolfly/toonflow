@@ -37,6 +37,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '使用教程', link: '/guide/', activeMatch: '^/guide/' },
       { text: '开发文档', link: '/development/', activeMatch: '^/development/' },
+      { text: '插件开发', link: '/plugins/', activeMatch: '^/plugins/' },
       { text: '部署运维', link: '/deploy/', activeMatch: '^/deploy/' },
     ],
     sidebar: {
@@ -83,6 +84,29 @@ export default defineConfig({
         {
           text: '参考',
           items: [{ text: '项目结构', link: '/development/structure' }],
+        },
+      ],
+      '/plugins/': [
+        {
+          text: '插件开发',
+          items: [{ text: '插件开发总览', link: '/plugins/' }],
+        },
+        {
+          text: '扩展类型',
+          items: [
+            { text: '01 · 开发总览', link: '/plugins/overview' },
+            { text: '02 · Tools 工具插件', link: '/plugins/tools' },
+            { text: '03 · Nodes 节点插件', link: '/plugins/nodes' },
+            { text: '04 · Skill 技能插件', link: '/plugins/skill' },
+            { text: '05 · A2A Teams（未开放）', link: '/plugins/teams' },
+          ],
+        },
+        {
+          text: '交付与发布',
+          items: [
+            { text: '06 · 交付前检查', link: '/plugins/checklist' },
+            { text: '07 · 发布插件', link: '/plugins/publish' },
+          ],
         },
       ],
       '/deploy/': [
